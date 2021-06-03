@@ -42,7 +42,7 @@ var (
 	}
 
 	initTokens = sdk.TokensFromConsensusPower(200)
-	initCoin = sdk.NewCoin(assets.MicroMedDenom, initTokens)
+	initCoin   = sdk.NewCoin(assets.MicroMedDenom, initTokens)
 	initCoins  = sdk.NewCoins(initCoin)
 )
 
@@ -64,7 +64,7 @@ func newTestCodec() params.EncodingConfig {
 type TestInput struct {
 	suite.Suite
 
-	Ctx           sdk.Context
+	Ctx sdk.Context
 
 	AccountKeeper authkeeper.AccountKeeper
 	BankKeeper    bankkeeper.Keeper
@@ -140,7 +140,6 @@ func (suite *TestInput) SetupTest() {
 	suite.BankKeeper = bankKeeper
 	suite.Keeper = *burnKeeper
 
-
 }
 
 func (suite *TestInput) TestBurnCoins() {
@@ -175,7 +174,7 @@ func (suite *TestInput) TestBurnCoins() {
 	suite.Require().Equal(sdk.TokensFromConsensusPower(400), afterBurnTotal[0].Amount)
 }
 
-func (suite *TestInput)TestGetAccount_NotExistAddress() {
+func (suite *TestInput) TestGetAccount_NotExistAddress() {
 	ctx := suite.Ctx
 	bankKeeper := suite.BankKeeper
 	burnKeeper := suite.Keeper

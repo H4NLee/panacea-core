@@ -87,6 +87,9 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	// this line is used by starport scaffolding # stargate/app/moduleImport
+	"github.com/medibloc/panacea-core/x/aol"
+	aolkeeper "github.com/medibloc/panacea-core/x/aol/keeper"
+	aoltypes "github.com/medibloc/panacea-core/x/aol/types"
 	"github.com/medibloc/panacea-core/x/burn"
 	burnkeeper "github.com/medibloc/panacea-core/x/burn/keeper"
 	burntypes "github.com/medibloc/panacea-core/x/burn/types"
@@ -137,6 +140,7 @@ var (
 		vesting.AppModuleBasic{},
 		panacea.AppModuleBasic{},
 		// this line is used by starport scaffolding # stargate/app/moduleBasic
+		aol.AppModuleBasic{},
 		burn.AppModuleBasic{},
 	)
 
@@ -205,6 +209,8 @@ type App struct {
 
 	panaceaKeeper panaceakeeper.Keeper
 	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
+
+	aolKeeper  aolkeeper.Keeper
 	burnKeeper burnkeeper.Keeper
 
 	// the module manager
@@ -216,7 +222,7 @@ type App struct {
 func New(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest bool, skipUpgradeHeights map[int64]bool,
 	homePath string, invCheckPeriod uint, encodingConfig appparams.EncodingConfig,
-// this line is used by starport scaffolding # stargate/app/newArgument
+	// this line is used by starport scaffolding # stargate/app/newArgument
 	appOpts servertypes.AppOptions, baseAppOptions ...func(*baseapp.BaseApp),
 ) *App {
 
@@ -236,6 +242,7 @@ func New(
 		evidencetypes.StoreKey, ibctransfertypes.StoreKey, capabilitytypes.StoreKey,
 		panaceatypes.StoreKey,
 		// this line is used by starport scaffolding # stargate/app/storeKey
+		aoltypes.StoreKey,
 		burntypes.StoreKey,
 	)
 	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey)
@@ -331,6 +338,13 @@ func New(
 	)
 
 	// this line is used by starport scaffolding # stargate/app/keeperDefinition
+
+	app.aolKeeper = *aolkeeper.NewKeeper(
+		appCodec,
+		keys[aoltypes.StoreKey],
+		keys[aoltypes.MemStoreKey],
+	)
+	aolModule := aol.NewAppModule(appCodec, app.aolKeeper)
 	app.burnKeeper = *burnkeeper.NewKeeper(
 		app.BankKeeper,
 	)
@@ -377,6 +391,7 @@ func New(
 		transferModule,
 		panacea.NewAppModule(appCodec, app.panaceaKeeper),
 		// this line is used by starport scaffolding # stargate/app/appModule
+		aolModule,
 		burn.NewAppModule(appCodec, app.burnKeeper),
 	)
 
@@ -412,6 +427,7 @@ func New(
 		ibctransfertypes.ModuleName,
 		panaceatypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
+		aoltypes.ModuleName,
 		burntypes.ModuleName,
 	)
 
@@ -595,6 +611,7 @@ func initParamsKeeper(appCodec codec.BinaryMarshaler, legacyAmino *codec.LegacyA
 	paramsKeeper.Subspace(ibctransfertypes.ModuleName)
 	paramsKeeper.Subspace(ibchost.ModuleName)
 	// this line is used by starport scaffolding # stargate/app/paramSubspace
+	paramsKeeper.Subspace(aoltypes.ModuleName)
 	paramsKeeper.Subspace(burntypes.ModuleName)
 
 	return paramsKeeper
