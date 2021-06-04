@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/gogo/protobuf/proto"
 	"log"
 	"regexp"
 	"strings"
@@ -65,7 +65,7 @@ func GetSignBytesDID(did string) []byte {
 
 func NewDIDDocument(id string, opts ...DIDDocumentOption) DIDDocument {
 	doc := DIDDocument{
-		Contexts: &Contexts{ContextDIDV1},
+		Contexts: &StringOrStrings{ContextDIDV1},
 		ID:       id,
 	}
 
@@ -139,7 +139,7 @@ func (doc DIDDocument) Valid() bool {
 		return false
 	}
 
-	if doc.Contexts == nil || !doc.Contexts.Valid() {
+	if doc.Contexts == nil || !ValidateContexts(*doc.Contexts) {
 		return false
 	}
 
@@ -227,172 +227,78 @@ func (doc DIDDocument) VerificationMethodFrom(relationships []*VerificationRelat
 	return VerificationMethod{}, false
 }
 
-type Contexts []Context
+type StringOrStrings []string
 
-func (contexts *Contexts) appendToItself(str string) {
-	*contexts = append(*contexts, Context(str))
+func (s StringOrStrings) protoType() *Strings {
+	values := make([]string, 0, len(s))
+	for _, context := range s {
+		values = append(values, string(context))
+	}
+
+	return &Strings{
+		Values: values,
+	}
 }
 
-func (contexts Contexts) Size() (n int) {
-	var l int
-	_ = l
-	if len(contexts) > 0 {
-		for _, s := range contexts {
-			l = len(s)
-			n += 1 + l + sovDid(uint64(l))
-		}
-	}
-	return n
+func (s StringOrStrings) Size() int {
+	return s.protoType().Size()
 }
 
-func (contexts Contexts) MarshalTo(dAtA []byte) (int, error) {
-	size := contexts.Size()
-	return contexts.MarshalToSizedBuffer(dAtA[:size])
+func (s StringOrStrings) Marshal() ([]byte, error) {
+	return proto.Marshal(s.protoType())
 }
 
-func (contexts Contexts) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	for iNdEx := len(contexts) - 1; iNdEx >= 0; iNdEx-- {
-		i -= len(contexts[iNdEx])
-		copy(dAtA[i:], contexts[iNdEx])
-		i = encodeVarintDid(dAtA, i, uint64(len(contexts[iNdEx])))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
+func (s *StringOrStrings) MarshalTo(data []byte) (n int, err error) {
+	return s.protoType().MarshalTo(data)
 }
 
-func (contexts *Contexts) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDid
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: DIDDocument: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DIDDocument: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-
-		if wireType != 2 {
-			return fmt.Errorf("proto: wrong wireType = %d for field Contexts", wireType)
-		}
-		var stringLen uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDid
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			stringLen |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		intStringLen := int(stringLen)
-		if intStringLen < 0 {
-			return ErrInvalidLengthDid
-		}
-		postIndex := iNdEx + intStringLen
-		if postIndex < 0 {
-			return ErrInvalidLengthDid
-		}
-		if postIndex > l {
-			return io.ErrUnexpectedEOF
-		}
-
-		switch fieldNum {
-		case 1:
-			contexts.appendToItself(string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDid(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthDid
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+func (s *StringOrStrings) Unmarshal(bz []byte) error {
+	protoType := &Strings{}
+	if err := proto.Unmarshal(bz, protoType); err != nil {
+		return err
 	}
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
+
+	*s = protoType.Values
 	return nil
 }
 
-func (contexts Contexts) Valid() bool {
+func (s StringOrStrings) MarshalJSON() ([]byte, error) {
+	if len(s) == 1 { // if only one, treat it as a single string
+		return json.Marshal(s[0])
+	}
+	return json.Marshal(s) // if not, as a list
+}
+
+func (s *StringOrStrings) UnmarshalJSON(bz []byte) error {
+	var single string
+	err := json.Unmarshal(bz, &single)
+	if err == nil {
+		*s = StringOrStrings{single}
+		return nil
+	}
+
+	var multiple []string
+	if err := json.Unmarshal(bz, &multiple); err != nil {
+		return err
+	}
+	*s = multiple
+	return nil
+}
+
+func ValidateContexts(contexts StringOrStrings) bool {
 	if contexts == nil || len(contexts) == 0 || contexts[0] != ContextDIDV1 { // the 1st one must be ContextDIDV1
 		return false
 	}
 
-	set := make(map[Context]struct{}, len(contexts))
+	set := make(map[string]struct{}, len(contexts))
 	for _, ctx := range contexts {
 		_, dup := set[ctx] // check the duplication
-		if dup || !ctx.Valid() {
+		if dup || !ValidateContext(ctx) {
 			return false
 		}
 		set[ctx] = struct{}{}
 	}
 	return true
-}
-
-func (contexts Contexts) MarshalJSON() ([]byte, error) {
-	if len(contexts) == 1 { // if only one, treat it as a single string
-		return json.Marshal(contexts[0])
-	}
-	return json.Marshal([]Context(contexts)) // if not, as a list
-}
-
-func (contexts *Contexts) UnmarshalJSON(bz []byte) error {
-	var single Context
-	err := json.Unmarshal(bz, &single)
-	if err == nil {
-		*contexts = Contexts{single}
-		return nil
-	}
-
-	var multiple []Context
-	if err := json.Unmarshal(bz, &multiple); err != nil {
-		return err
-	}
-	*contexts = multiple
-	return nil
-}
-
-type Context string
-
-func (ctx Context) Valid() bool {
-	// TODO: The context can be any URI string. But, don't validate it strictly yet until W3C finalizes the spec.
-	return ctx != ""
 }
 
 const (
