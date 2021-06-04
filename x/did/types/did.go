@@ -227,6 +227,8 @@ func (doc DIDDocument) VerificationMethodFrom(relationships []*VerificationRelat
 	return VerificationMethod{}, false
 }
 
+var _ sdk.CustomProtobufType = &StringOrStrings{}
+
 type StringOrStrings []string
 
 func (s StringOrStrings) protoType() *Strings {
