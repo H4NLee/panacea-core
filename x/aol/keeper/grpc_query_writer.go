@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/cosmos/cosmos-sdk/store/prefix"
@@ -12,24 +13,41 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (k Keeper) WriterAll(c context.Context, req *types.QueryAllWriterRequest) (*types.QueryAllWriterResponse, error) {
+func (k Keeper) Writer(c context.Context, req *types.QueryGetWriterRequest) (*types.QueryGetWriterResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	var writers []*types.Writer
 	ctx := sdk.UnwrapSDKContext(c)
 
+	writerKey := types.WriterCompositeKey{OwnerAddress: req.OwnerAddress, TopicName: req.TopicName, WriterAddress: req.WriterAddress}
+	if !k.HasWriter(ctx, writerKey) {
+		return nil, sdkerrors.ErrKeyNotFound
+	}
+
+	writer := k.GetWriter(ctx, writerKey)
+	return &types.QueryGetWriterResponse{Writer: &writer}, nil
+}
+
+func (k Keeper) Writers(c context.Context, req *types.QueryListWritersRequest) (*types.QueryListWritersResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+
+	var writerAddresses []string
+	ctx := sdk.UnwrapSDKContext(c)
+
+	keyPrefix := bytes.Join([][]byte{
+		types.KeyPrefix(types.WriterKey),
+		[]byte(types.WriterCompositeKey{OwnerAddress: req.OwnerAddress, TopicName: req.TopicName, WriterAddress: ""}.Marshal()),
+	}, []byte{})
+
 	store := ctx.KVStore(k.storeKey)
-	writerStore := prefix.NewStore(store, types.KeyPrefix(types.WriterKey))
+	writerStore := prefix.NewStore(store, keyPrefix)
 
 	pageRes, err := query.Paginate(writerStore, req.Pagination, func(key []byte, value []byte) error {
-		var writer types.Writer
-		if err := k.cdc.UnmarshalBinaryBare(value, &writer); err != nil {
-			return err
-		}
-
-		writers = append(writers, &writer)
+		writerAddress := string(key)
+		writerAddresses = append(writerAddresses, writerAddress)
 		return nil
 	})
 
@@ -37,23 +55,5 @@ func (k Keeper) WriterAll(c context.Context, req *types.QueryAllWriterRequest) (
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &types.QueryAllWriterResponse{Writer: writers, Pagination: pageRes}, nil
-}
-
-func (k Keeper) Writer(c context.Context, req *types.QueryGetWriterRequest) (*types.QueryGetWriterResponse, error) {
-	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid request")
-	}
-
-	var writer types.Writer
-	ctx := sdk.UnwrapSDKContext(c)
-
-	if !k.HasWriter(ctx, req.Id) {
-		return nil, sdkerrors.ErrKeyNotFound
-	}
-
-	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPrefix(types.WriterKey))
-	k.cdc.MustUnmarshalBinaryBare(store.Get(GetWriterIDBytes(req.Id)), &writer)
-
-	return &types.QueryGetWriterResponse{Writer: &writer}, nil
+	return &types.QueryListWritersResponse{WriterAddresses: writerAddresses, Pagination: pageRes}, nil
 }

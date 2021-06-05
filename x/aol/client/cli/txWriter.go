@@ -2,7 +2,6 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-	"strconv"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -10,22 +9,27 @@ import (
 	"github.com/medibloc/panacea-core/x/aol/types"
 )
 
-func CmdCreateWriter() *cobra.Command {
+func CmdAddWriter() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create-writer [moniker] [description] [nanoTimestamp]",
-		Short: "Creates a new writer",
-		Args:  cobra.ExactArgs(3),
+		Use:   "add-writer [topicName] [writerAddress]",
+		Short: "Add write permission for this topic",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			argsMoniker := string(args[0])
-			argsDescription := string(args[1])
-			argsNanoTimestamp, _ := strconv.ParseInt(args[2], 10, 64)
-
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			msg := types.NewMsgCreateWriter(clientCtx.GetFromAddress().String(), string(argsMoniker), string(argsDescription), int32(argsNanoTimestamp))
+			moniker, err := cmd.Flags().GetString(flagMoniker)
+			if err != nil {
+				moniker = ""
+			}
+			description, err := cmd.Flags().GetString(flagDescription)
+			if err != nil {
+				description = ""
+			}
+
+			msg := types.NewMsgAddWriter(args[0], moniker, description, args[1], clientCtx.GetFromAddress().String())
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -34,60 +38,24 @@ func CmdCreateWriter() *cobra.Command {
 	}
 
 	flags.AddTxFlagsToCmd(cmd)
-
-	return cmd
-}
-
-func CmdUpdateWriter() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "update-writer [id] [moniker] [description] [nanoTimestamp]",
-		Short: "Update a writer",
-		Args:  cobra.ExactArgs(4),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.ParseUint(args[0], 10, 64)
-			if err != nil {
-				return err
-			}
-
-			argsMoniker := string(args[1])
-			argsDescription := string(args[2])
-			argsNanoTimestamp, _ := strconv.ParseInt(args[3], 10, 64)
-
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			msg := types.NewMsgUpdateWriter(clientCtx.GetFromAddress().String(), id, string(argsMoniker), string(argsDescription), int32(argsNanoTimestamp))
-			if err := msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-
-	flags.AddTxFlagsToCmd(cmd)
+	cmd.Flags().String(flagMoniker, "", "name of writer")
+	cmd.Flags().String(flagDescription, "", "description of writer")
 
 	return cmd
 }
 
 func CmdDeleteWriter() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-writer [id] [moniker] [description] [nanoTimestamp]",
-		Short: "Delete a writer by id",
-		Args:  cobra.ExactArgs(1),
+		Use:   "delete-writer [topicName] [writerAddress]",
+		Short: "Delete write permission for this topic",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.ParseUint(args[0], 10, 64)
-			if err != nil {
-				return err
-			}
-
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			msg := types.NewMsgDeleteWriter(clientCtx.GetFromAddress().String(), id)
+			msg := types.NewMsgDeleteWriter(args[0], args[1], clientCtx.GetFromAddress().String())
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
