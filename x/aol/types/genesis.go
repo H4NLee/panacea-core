@@ -1,9 +1,6 @@
 package types
 
-import (
-	"fmt"
-	// this line is used by starport scaffolding # ibc/genesistype/import
-)
+// this line is used by starport scaffolding # ibc/genesistype/import
 
 // DefaultIndex is the default capability global index
 const DefaultIndex uint64 = 1
@@ -13,10 +10,10 @@ func DefaultGenesis() *GenesisState {
 	return &GenesisState{
 		// this line is used by starport scaffolding # ibc/genesistype/default
 		// this line is used by starport scaffolding # genesis/types/default
-		OwnerList:  []*Owner{},
-		RecordList: []*Record{},
-		WriterList: []*Writer{},
-		TopicList:  []*Topic{},
+		Owners:  map[string]*Owner{},
+		Topics:  map[string]*Topic{},
+		Writers: map[string]*Writer{},
+		Records: map[string]*Record{},
 	}
 }
 
@@ -26,42 +23,30 @@ func (gs GenesisState) Validate() error {
 	// this line is used by starport scaffolding # ibc/genesistype/validate
 
 	// this line is used by starport scaffolding # genesis/types/validate
-	// Check for duplicated ID in owner
-	ownerIdMap := make(map[uint64]bool)
 
-	for _, elem := range gs.OwnerList {
-		if _, ok := ownerIdMap[elem.Id]; ok {
-			return fmt.Errorf("duplicated id for owner")
+	for keyStr := range gs.Owners {
+		var key OwnerCompositeKey
+		if err := key.Unmarshal(keyStr); err != nil {
+			return err
 		}
-		ownerIdMap[elem.Id] = true
 	}
-	// Check for duplicated ID in record
-	recordIdMap := make(map[uint64]bool)
-
-	for _, elem := range gs.RecordList {
-		if _, ok := recordIdMap[elem.Id]; ok {
-			return fmt.Errorf("duplicated id for record")
+	for keyStr := range gs.Topics {
+		var key TopicCompositeKey
+		if err := key.Unmarshal(keyStr); err != nil {
+			return err
 		}
-		recordIdMap[elem.Id] = true
 	}
-	// Check for duplicated ID in writer
-	writerIdMap := make(map[uint64]bool)
-
-	for _, elem := range gs.WriterList {
-		if _, ok := writerIdMap[elem.Id]; ok {
-			return fmt.Errorf("duplicated id for writer")
+	for keyStr := range gs.Writers {
+		var key WriterCompositeKey
+		if err := key.Unmarshal(keyStr); err != nil {
+			return err
 		}
-		writerIdMap[elem.Id] = true
 	}
-	// Check for duplicated ID in topic
-	topicIdMap := make(map[uint64]bool)
-
-	for _, elem := range gs.TopicList {
-		if _, ok := topicIdMap[elem.Id]; ok {
-			return fmt.Errorf("duplicated id for topic")
+	for keyStr := range gs.Records {
+		var key RecordCompositeKey
+		if err := key.Unmarshal(keyStr); err != nil {
+			return err
 		}
-		topicIdMap[elem.Id] = true
 	}
-
 	return nil
 }

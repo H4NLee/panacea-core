@@ -9,76 +9,73 @@ import (
 // InitGenesis initializes the capability module's state from a provided genesis
 // state.
 func InitGenesis(ctx sdk.Context, k keeper.Keeper, genState types.GenesisState) {
-	// this line is used by starport scaffolding # genesis/module/init
-	// Set all the owner
-	for _, elem := range genState.OwnerList {
-		k.SetOwner(ctx, *elem)
+	for keyStr, owner := range genState.Owners {
+		var key types.OwnerCompositeKey
+		types.MustUnmarshalCompositeKey(&key, keyStr)
+		k.SetOwner(ctx, key, *owner)
 	}
 
-	// Set owner count
-	k.SetOwnerCount(ctx, uint64(len(genState.OwnerList)))
-
-	// Set all the record
-	for _, elem := range genState.RecordList {
-		k.SetRecord(ctx, *elem)
+	for keyStr, topic := range genState.Topics {
+		var key types.TopicCompositeKey
+		types.MustUnmarshalCompositeKey(&key, keyStr)
+		k.SetTopic(ctx, key, *topic)
 	}
 
-	// Set record count
-	k.SetRecordCount(ctx, uint64(len(genState.RecordList)))
-
-	// Set all the writer
-	for _, elem := range genState.WriterList {
-		k.SetWriter(ctx, *elem)
+	for keyStr, writer := range genState.Writers {
+		var key types.WriterCompositeKey
+		types.MustUnmarshalCompositeKey(&key, keyStr)
+		k.SetWriter(ctx, key, *writer)
 	}
 
-	// Set writer count
-	k.SetWriterCount(ctx, uint64(len(genState.WriterList)))
-
-	// Set all the topic
-	for _, elem := range genState.TopicList {
-		k.SetTopic(ctx, *elem)
+	for keyStr, record := range genState.Records {
+		var key types.RecordCompositeKey
+		types.MustUnmarshalCompositeKey(&key, keyStr)
+		k.SetRecord(ctx, key, *record)
 	}
-
-	// Set topic count
-	k.SetTopicCount(ctx, uint64(len(genState.TopicList)))
-
-	// this line is used by starport scaffolding # ibc/genesis/init
 }
 
 // ExportGenesis returns the capability module's exported genesis.
 func ExportGenesis(ctx sdk.Context, k keeper.Keeper) *types.GenesisState {
 	genesis := types.DefaultGenesis()
 
-	// this line is used by starport scaffolding # genesis/module/export
-	// Get all owner
-	ownerList := k.GetAllOwner(ctx)
-	for _, elem := range ownerList {
-		elem := elem
-		genesis.OwnerList = append(genesis.OwnerList, &elem)
-	}
+	for _, ownerAddr := range k.GetAllOwnerAddrs(ctx) {
+		ownerKey := types.OwnerCompositeKey{
+			OwnerAddress: ownerAddr,
+		}
+		owner := k.GetOwner(ctx, ownerKey)
+		genesis.Owners[ownerKey.Marshal()] = &owner
 
-	// Get all record
-	recordList := k.GetAllRecord(ctx)
-	for _, elem := range recordList {
-		elem := elem
-		genesis.RecordList = append(genesis.RecordList, &elem)
-	}
+		for _, topicName := range k.GetAllTopicNames(ctx, ownerAddr) {
+			topicKey := types.TopicCompositeKey{
+				OwnerAddress: ownerAddr,
+				TopicName:    topicName,
+			}
+			topic := k.GetTopic(ctx, topicKey)
+			genesis.Topics[topicKey.Marshal()] = &topic
 
-	// Get all writer
-	writerList := k.GetAllWriter(ctx)
-	for _, elem := range writerList {
-		elem := elem
-		genesis.WriterList = append(genesis.WriterList, &elem)
-	}
+			for _, writerAddr := range k.GetAllWriterAddrs(ctx, ownerAddr, topicName) {
+				writerKey := types.WriterCompositeKey{
+					OwnerAddress:  ownerAddr,
+					TopicName:     topicName,
+					WriterAddress: writerAddr,
+				}
+				writer := k.GetWriter(ctx, writerKey)
+				genesis.Writers[writerKey.Marshal()] = &writer
+			}
 
-	// Get all topic
-	topicList := k.GetAllTopic(ctx)
-	for _, elem := range topicList {
-		elem := elem
-		genesis.TopicList = append(genesis.TopicList, &elem)
-	}
+			var offset uint64
+			for offset = 0; offset < topic.TotalRecords; offset++ {
+				recordKey := types.RecordCompositeKey{
+					OwnerAddress: ownerAddr,
+					TopicName:    topicName,
+					Offset:       offset,
+				}
+				record := k.GetRecord(ctx, recordKey)
+				genesis.Records[recordKey.Marshal()] = &record
+			}
+		}
 
-	// this line is used by starport scaffolding # ibc/genesis/export
+	}
 
 	return genesis
 }
