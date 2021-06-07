@@ -88,6 +88,9 @@ import (
 
 	_ "github.com/medibloc/panacea-core/client/docs/statik"
 
+	"github.com/medibloc/panacea-core/x/aol"
+	aolkeeper "github.com/medibloc/panacea-core/x/aol/keeper"
+	aoltypes "github.com/medibloc/panacea-core/x/aol/types"
 	"github.com/medibloc/panacea-core/x/burn"
 	burnkeeper "github.com/medibloc/panacea-core/x/burn/keeper"
 	burntypes "github.com/medibloc/panacea-core/x/burn/types"
@@ -139,6 +142,7 @@ var (
 		evidence.AppModuleBasic{},
 		transfer.AppModuleBasic{},
 		vesting.AppModuleBasic{},
+		aol.AppModuleBasic{},
 		token.AppModuleBasic{},
 		burn.AppModuleBasic{},
 	)
@@ -206,9 +210,8 @@ type App struct {
 	ScopedIBCKeeper      capabilitykeeper.ScopedKeeper
 	ScopedTransferKeeper capabilitykeeper.ScopedKeeper
 
-	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
-	burnKeeper burnkeeper.Keeper
-
+	aolKeeper   aolkeeper.Keeper
+	burnKeeper  burnkeeper.Keeper
 	tokenKeeper tokenkeeper.Keeper
 
 	// the module manager
@@ -220,7 +223,6 @@ type App struct {
 func New(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest bool, skipUpgradeHeights map[int64]bool,
 	homePath string, invCheckPeriod uint, encodingConfig appparams.EncodingConfig,
-	// this line is used by starport scaffolding # stargate/app/newArgument
 	appOpts servertypes.AppOptions, baseAppOptions ...func(*baseapp.BaseApp),
 ) *App {
 
@@ -238,6 +240,7 @@ func New(
 		minttypes.StoreKey, distrtypes.StoreKey, slashingtypes.StoreKey,
 		govtypes.StoreKey, paramstypes.StoreKey, ibchost.StoreKey, upgradetypes.StoreKey,
 		evidencetypes.StoreKey, ibctransfertypes.StoreKey, capabilitytypes.StoreKey,
+		aoltypes.StoreKey,
 		tokentypes.StoreKey,
 		burntypes.StoreKey,
 	)
@@ -329,7 +332,13 @@ func New(
 	// If evidence needs to be handled for the app, set routes in router here and seal
 	app.EvidenceKeeper = *evidenceKeeper
 
-	// this line is used by starport scaffolding # stargate/app/keeperDefinition
+	app.aolKeeper = *aolkeeper.NewKeeper(
+		appCodec,
+		keys[aoltypes.StoreKey],
+		keys[aoltypes.MemStoreKey],
+	)
+	aolModule := aol.NewAppModule(appCodec, app.aolKeeper)
+
 	app.burnKeeper = *burnkeeper.NewKeeper(
 		app.BankKeeper,
 	)
@@ -382,6 +391,7 @@ func New(
 		ibc.NewAppModule(app.IBCKeeper),
 		params.NewAppModule(app.ParamsKeeper),
 		transferModule,
+		aolModule,
 		tokenModule,
 		burn.NewAppModule(appCodec, app.burnKeeper),
 	)
@@ -416,6 +426,7 @@ func New(
 		genutiltypes.ModuleName,
 		evidencetypes.ModuleName,
 		ibctransfertypes.ModuleName,
+		aoltypes.ModuleName,
 		tokentypes.ModuleName,
 		burntypes.ModuleName,
 	)
@@ -615,6 +626,7 @@ func initParamsKeeper(appCodec codec.BinaryMarshaler, legacyAmino *codec.LegacyA
 	paramsKeeper.Subspace(crisistypes.ModuleName)
 	paramsKeeper.Subspace(ibctransfertypes.ModuleName)
 	paramsKeeper.Subspace(ibchost.ModuleName)
+	paramsKeeper.Subspace(aoltypes.ModuleName)
 	paramsKeeper.Subspace(tokentypes.ModuleName)
 	paramsKeeper.Subspace(burntypes.ModuleName)
 
