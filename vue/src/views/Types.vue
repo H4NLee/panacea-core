@@ -6,6 +6,7 @@
 		<SpType modulePath="medibloc.panaceacore.aol" moduleType="Record"  />
 		<SpType modulePath="medibloc.panaceacore.aol" moduleType="Writer"  />
 		<SpType modulePath="medibloc.panaceacore.aol" moduleType="Topic"  />
+		<SpType modulePath="medibloc.panaceacore.token" moduleType="Token"  />
 		</div>
 	</div>
 </template>
