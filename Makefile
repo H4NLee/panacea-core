@@ -36,9 +36,8 @@ build-all: proto-gen update-swagger-docs build
 ### Analyzing
 
 lint:
-	GO111MODULE=off go get github.com/golangci/golangci-lint/cmd/golangci-lint
-	golangci-lint run --timeout 5m0s --allow-parallel-runners
-	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" | xargs gofmt -d -s
+	$(DOCKER) run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:v1.40.1 golangci-lint run -v --timeout 5m0s --allow-parallel-runners
+	find . -name '*.go' -type f -not -path "*.git*" | xargs gofmt -d -s
 	go mod verify
 
 ########################################
