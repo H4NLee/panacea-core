@@ -37,7 +37,7 @@ build-all: proto-gen update-swagger-docs build
 
 lint:
 	$(DOCKER) run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:v1.40.1 golangci-lint run -v --timeout 5m0s --allow-parallel-runners
-	find . -name '*.go' -type f -not -path "*.git*" | xargs gofmt -d -s
+	find . -name '*.go' -type f -not -path "*.git*" -not -path "*statik.go" | xargs gofmt -d -s
 	go mod verify
 
 ########################################
