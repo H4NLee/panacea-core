@@ -3,6 +3,7 @@ module github.com/medibloc/panacea-core
 go 1.15
 
 require (
+	github.com/CosmWasm/wasmd v0.17.0
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/cosmos/cosmos-sdk v0.42.5
 	github.com/cosmos/go-bip39 v1.0.0
@@ -15,8 +16,8 @@ require (
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/pborman/uuid v1.2.0
+	github.com/prometheus/client_golang v1.10.0
 	github.com/rakyll/statik v0.1.7
-	github.com/regen-network/cosmos-proto v0.3.1 // indirect
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
