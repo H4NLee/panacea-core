@@ -66,12 +66,15 @@ func EncryptData(defaultNodeHome string) *cobra.Command {
 				return err
 			}
 
+			encryptedDataStr := hex.EncodeToString(encryptedData)
+			cmd.Print(encryptedDataStr)
+
 			err = os.WriteFile(args[1], encryptedData, 0644)
 			if err != nil {
 				return err
 			}
 
-			return nil
+			return clientCtx.PrintString(encryptedDataStr)
 		},
 	}
 

@@ -59,15 +59,6 @@ func (m *MsgCreateDeal) GetSigners() []sdk.AccAddress {
 
 var _ sdk.Msg = &MsgSellData{}
 
-func NewMsgSellData(dealID uint64, verifiableCID, dataHash, sellerAddress string) *MsgSellData {
-	return &MsgSellData{
-		DealId:        dealID,
-		VerifiableCid: verifiableCID,
-		DataHash:      dataHash,
-		SellerAddress: sellerAddress,
-	}
-}
-
 func (m *MsgSellData) Route() string {
 	return RouterKey
 }
@@ -78,19 +69,20 @@ func (m *MsgSellData) Type() string {
 
 // ValidateBasic is validation for MsgSellData.
 func (m *MsgSellData) ValidateBasic() error {
-	_, err := sdk.AccAddressFromBech32(m.SellerAddress)
+	unsignedDataCert := m.GetUnsignedDataCert()
+	_, err := sdk.AccAddressFromBech32(unsignedDataCert.GetSellerAddress())
 	if err != nil {
 		return sdkerrors.Wrapf(sdkerrors.ErrInvalidAddress, "invalid seller address (%s)", err)
 	}
 
-	if m.DealId == 0 {
+	if unsignedDataCert.GetDealId() == 0 {
 		return sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "empty deal ID")
 	}
 
-	if len(m.VerifiableCid) == 0 {
+	if len(unsignedDataCert.GetVerifiableCid()) == 0 {
 		return sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "empty verifiableCID")
 	}
-	if len(m.DataHash) == 0 {
+	if len(unsignedDataCert.GetDataHash()) == 0 {
 		return sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "empty dataHash")
 	}
 
@@ -103,7 +95,7 @@ func (m *MsgSellData) GetSignBytes() []byte {
 }
 
 func (m *MsgSellData) GetSigners() []sdk.AccAddress {
-	seller, err := sdk.AccAddressFromBech32(m.SellerAddress)
+	seller, err := sdk.AccAddressFromBech32(m.GetUnsignedDataCert().GetSellerAddress())
 	if err != nil {
 		panic(err)
 	}

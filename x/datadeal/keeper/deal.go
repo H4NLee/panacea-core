@@ -12,6 +12,7 @@ import (
 	"github.com/medibloc/panacea-core/v2/types/assets"
 	"github.com/medibloc/panacea-core/v2/x/datadeal/types"
 	oracletypes "github.com/medibloc/panacea-core/v2/x/oracle/types"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 func (k Keeper) CreateDeal(ctx sdk.Context, buyerAddress sdk.AccAddress, msg *types.MsgCreateDeal) (uint64, error) {
@@ -174,7 +175,7 @@ func (k Keeper) IncrementCurNumDataAtDeal(ctx sdk.Context, dealID uint64) error 
 }
 
 func (k Keeper) SellData(ctx sdk.Context, msg *types.MsgSellData) error {
-	deal, err := k.GetDeal(ctx, msg.DealId)
+	deal, err := k.GetDeal(ctx, msg.GetUnsignedDataCert().GetDealId())
 	if err != nil {
 		return sdkerrors.Wrapf(types.ErrSellData, err.Error())
 	}
@@ -183,27 +184,25 @@ func (k Keeper) SellData(ctx sdk.Context, msg *types.MsgSellData) error {
 		return sdkerrors.Wrapf(types.ErrSellData, "deal status is not ACTIVE")
 	}
 
-	if err := k.checkDataSaleStatus(ctx, msg.SellerAddress, msg.DataHash, msg.DealId); err != nil {
-		return sdkerrors.Wrapf(types.ErrSellData, err.Error())
+	// check unique id
+	if msg.GetUnsignedDataCert().GetOracleUniqueId() != k.oracleKeeper.GetParams(ctx).UniqueId {
+		return fmt.Errorf("unique ID mismatched")
 	}
 
-	dataSale := types.NewDataSale(msg)
-	dataSale.VerificationVotingPeriod = k.oracleKeeper.GetVotingPeriod(ctx)
-
-	if err := k.SetDataSale(ctx, dataSale); err != nil {
-		return sdkerrors.Wrapf(types.ErrSellData, err.Error())
+	// signature validation
+	unsignedDataCert := msg.GetUnsignedDataCert()
+	unsignedDataCertBz, err := unsignedDataCert.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal unsigned data certificate")
+	}
+	oraclePubKeyBz := k.oracleKeeper.GetParams(ctx).MustDecodeOraclePublicKey()
+	if !secp256k1.PubKey(oraclePubKeyBz).VerifySignature(unsignedDataCertBz, msg.GetSignature()) {
+		return fmt.Errorf("signature verification failed")
 	}
 
-	k.AddDataVerificationQueue(ctx, dataSale.DataHash, dataSale.DealId, dataSale.VerificationVotingPeriod.VotingEndTime)
+	// distribute reward
 
-	ctx.EventManager().EmitEvent(
-		sdk.NewEvent(
-			types.EventTypeDataVerificationVote,
-			sdk.NewAttribute(types.AttributeKeyVoteStatus, types.AttributeValueVoteStatusStarted),
-			sdk.NewAttribute(types.AttributeKeyDealID, strconv.FormatUint(dataSale.DealId, 10)),
-			sdk.NewAttribute(types.AttributeKeyDataHash, dataSale.DataHash),
-		),
-	)
+	// set data sale
 
 	return nil
 }

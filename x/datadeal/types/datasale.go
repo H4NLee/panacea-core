@@ -13,10 +13,10 @@ var (
 
 func NewDataSale(msg *MsgSellData) *DataSale {
 	return &DataSale{
-		SellerAddress: msg.SellerAddress,
-		DealId:        msg.DealId,
-		VerifiableCid: msg.VerifiableCid,
-		DataHash:      msg.DataHash,
+		SellerAddress: msg.UnsignedDataCert.SellerAddress,
+		DealId:        msg.UnsignedDataCert.DealId,
+		VerifiableCid: msg.UnsignedDataCert.VerifiableCid,
+		DataHash:      msg.UnsignedDataCert.DataHash,
 		Status:        DATA_SALE_STATUS_VERIFICATION_VOTING_PERIOD,
 	}
 }

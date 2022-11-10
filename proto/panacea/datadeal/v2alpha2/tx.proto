@@ -46,10 +46,17 @@ message MsgCreateDealResponse {
 
 // MsgSellData defines the Msg/SellData request type.
 message MsgSellData {
-  uint64 deal_id = 1;
-  string verifiable_cid = 2;
-  string data_hash=3;
-  string seller_address = 4;
+  UnsignedDataCert unsigned_data_cert = 1;
+  bytes signature = 2;
+}
+
+message UnsignedDataCert {
+  string oracle_unique_id = 1;
+  uint64 deal_id = 2;
+  string verifiable_cid = 3;
+  string delivered_cid = 4;
+  string data_hash = 5;
+  string seller_address = 6;
 }
 
 // MsgSellDataResponse defines the Msg/SellData response type.
